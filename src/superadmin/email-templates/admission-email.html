@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admission Invitation</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #4f46e5; padding: 32px 40px; text-align: center; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+    .body { padding: 32px 40px; }
+    .body p { color: #374151; line-height: 1.6; margin: 0 0 16px; }
+    .course-box { background: #f0f4ff; border-left: 4px solid #4f46e5; padding: 16px 20px; border-radius: 4px; margin: 20px 0; }
+    .course-box p { margin: 0; color: #1e1b4b; font-weight: bold; font-size: 16px; }
+    .btn { display: inline-block; margin: 24px 0; padding: 14px 32px; background: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; }
+    .expiry { color: #6b7280; font-size: 13px; margin-top: 8px; }
+    .footer { background: #f9fafb; padding: 20px 40px; text-align: center; color: #9ca3af; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>You're Invited!</h1>
+    </div>
+    <div class="body">
+      <p>Hi {{STUDENT_NAME}},</p>
+      <p>You have been invited to enroll in a course. Click the button below to complete your admission and get started.</p>
+
+      <div class="course-box">
+        <p>{{COURSE_NAME}}</p>
+      </div>
+
+      <a href="{{ADMISSION_LINK}}" class="btn">Complete Admission</a>
+
+      <p class="expiry">This link expires on {{EXPIRES_AT}}. Please complete your admission before then.</p>
+
+      <p>If you have any questions, feel free to reply to this email.</p>
+      <p>Welcome aboard,<br/>The Karpi Team</p>
+    </div>
+    <div class="footer">
+      &copy; {{YEAR}} Karpi LMS. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>

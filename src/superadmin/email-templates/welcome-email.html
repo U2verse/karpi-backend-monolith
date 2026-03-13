@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Welcome to Karpi | Login Credentials</title>
+
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", sans-serif;
+  background: linear-gradient(180deg, #EFF6FF, #DBEAFE);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 32px;
+  text-align: center;
+  position: relative;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 42px 44px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+}
+
+.card-logo {
+  margin-bottom: 18px;
+}
+
+.card-logo img {
+  height: 48px;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #1E40AF;
+  margin-bottom: 12px;
+}
+
+.subtitle {
+  font-size: 17px;
+  color: #4b5563;
+  margin-bottom: 30px;
+  line-height: 1.7;
+}
+
+/* CREDENTIALS BOX */
+.credentials {
+  background: #EFF6FF;
+  border-radius: 18px;
+  padding: 26px;
+  margin-bottom: 28px;
+  text-align: left;
+  font-size: 16px;
+}
+
+.credentials-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1E40AF;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cred-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px dashed #BFDBFE;
+}
+
+.cred-row:last-child {
+  border-bottom: none;
+}
+
+.cred-row span:first-child {
+  color: #1E40AF;
+  font-weight: 600;
+}
+
+.cred-row span:last-child {
+  font-weight: 700;
+  color: #1E3A8A;
+  font-family: monospace;
+  font-size: 15px;
+  background: #DBEAFE;
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+
+/* CTA BUTTON */
+.cta-btn {
+  display: inline-block;
+  margin: 6px 0 28px;
+  padding: 16px 36px;
+  background: linear-gradient(135deg, #2563EB, #1E40AF);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 999px;
+  text-decoration: none;
+  box-shadow: 0 12px 26px rgba(37,99,235,0.45);
+}
+
+.cta-btn:hover {
+  opacity: 0.95;
+}
+
+/* NOTES */
+.notes {
+  background: linear-gradient(180deg, #EFF6FF, #DBEAFE);
+  border-radius: 18px;
+  padding: 26px;
+  text-align: left;
+  font-size: 15.5px;
+  line-height: 1.8;
+  margin-bottom: 26px;
+}
+
+.notes b {
+  color: #2563EB;
+}
+
+/* SECURITY WARNING */
+.security {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 14px;
+  padding: 16px 20px;
+  font-size: 14px;
+  color: #92400E;
+  text-align: left;
+  margin-bottom: 26px;
+  line-height: 1.6;
+}
+
+.security b {
+  color: #78350F;
+}
+
+/* FOOTER */
+.footer {
+  margin-top: 28px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  body {
+    align-items: flex-start;
+  }
+
+  .container {
+    padding: 28px 16px;
+  }
+
+  .card {
+    padding: 26px 20px;
+    border-radius: 22px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 15.5px;
+  }
+
+  .cred-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .footer {
+    font-size: 13px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="card">
+
+    <div class="card-logo">
+      <img src="karpi-logo.png" alt="Karpi Logo">
+    </div>
+
+    <div class="title">👋 Welcome to Karpi!</div>
+    <div class="subtitle">
+      Hi {{NAME}}, your academy is ready.<br />
+      Here are your login credentials to access your dashboard.
+    </div>
+
+    <!-- CREDENTIALS -->
+    <div class="credentials">
+      <div class="credentials-title">🔐 Your Login Credentials</div>
+      <div class="cred-row"><span>Academy App : </span><span>{{ACADEMY_URL}}</span></div>
+      <div class="cred-row"><span>Email : </span><span>{{EMAIL}}</span></div>
+      <div class="cred-row"><span>Password : </span><span>{{PASSWORD}}</span></div>
+    </div>
+
+    <!-- CTA -->
+    <a class="cta-btn" href="{{ACADEMY_URL}}" target="_blank">
+      🚀 Login to Your Academy
+    </a>
+
+    <!-- SECURITY WARNING -->
+    <div class="security">
+      ⚠️ <b>Important:</b> This is your auto-generated password. Please <b>change it immediately</b>
+      after your first login from your account settings. Do not share these credentials with anyone.
+    </div>
+
+    <!-- NOTES -->
+    <div class="notes">
+      <b>Getting started:</b><br><br>
+      1️⃣ Click the <b>Login to Your Academy</b> button above.<br><br>
+      2️⃣ Enter your email and the password above.<br><br>
+      3️⃣ Go to <b>Settings → Change Password</b> to set a new secure password.<br><br>
+      4️⃣ Set up your academy — add courses, students, and branding.<br><br>
+      📱 You will also receive a <b>WhatsApp message</b> with your login link.
+      Click <b>OK / YES</b> to continue receiving important updates.
+    </div>
+
+  </div>
+
+  <div class="footer">
+    © {{YEAR}} Karpi LMS · Powered by Karpi
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Registration Completed | Karpi</title>
+
+<style>
+ body {
+  margin: 0;
+  padding: 0;
+  font-family: "Inter", sans-serif;
+  background: linear-gradient(180deg, #EFF6FF, #DBEAFE);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+/* CONTAINER */
+.container {
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 32px;
+  text-align: center;
+  position: relative;
+}
+
+/* CARD */
+.card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 42px 44px;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+}
+
+/* LOGO INSIDE CARD */
+.card-logo {
+  margin-bottom: 18px;
+}
+
+.card-logo img {
+  height: 48px;
+}
+
+/* TEXT */
+.title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #1E40AF;
+  margin-bottom: 12px;
+}
+
+.subtitle {
+  font-size: 17px;
+  color: #4b5563;
+  margin-bottom: 30px;
+  line-height: 1.7;
+}
+
+/* INFO BOX */
+.info {
+  background: #EFF6FF;
+  border-radius: 18px;
+  padding: 26px;
+  margin-bottom: 28px;
+  text-align: left;
+  font-size: 16px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px dashed #BFDBFE;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row span:first-child {
+  color: #1E40AF;
+  font-weight: 600;
+}
+
+.info-row span:last-child {
+  font-weight: 700;
+  color: #1E3A8A;
+}
+
+/* CTA BUTTON */
+.cta-btn {
+  display: inline-block;
+  margin: 6px 0 28px;
+  padding: 16px 36px;
+  background: linear-gradient(135deg, #2563EB, #1E40AF);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 999px;
+  text-decoration: none;
+  box-shadow: 0 12px 26px rgba(37,99,235,0.45);
+}
+
+.cta-btn:hover {
+  opacity: 0.95;
+}
+
+/* NOTES */
+.notes {
+  background: linear-gradient(180deg, #EFF6FF, #DBEAFE);
+  border-radius: 18px;
+  padding: 26px;
+  text-align: left;
+  font-size: 15.5px;
+  line-height: 1.8;
+  margin-bottom: 26px;
+}
+
+.notes b {
+  color: #2563EB;
+}
+
+/* SETUP LINK */
+.setup-link {
+  margin-top: 18px;
+  font-size: 16px;
+}
+
+.setup-link a {
+  color: #2563EB;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.setup-link a:hover {
+  text-decoration: underline;
+}
+
+/* FOOTER */
+.footer {
+  margin-top: 28px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* CONFETTI */
+.confetti {
+  position: fixed;
+  top: -10px;
+  width: 8px;
+  height: 14px;
+  opacity: 0.9;
+  animation: fall 3s linear forwards;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(110vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+
+  body {
+    align-items: flex-start;
+  }
+
+  .container {
+    padding: 28px 16px;
+  }
+
+  .card {
+    padding: 26px 20px;
+    border-radius: 22px;
+  }
+
+  .card-logo img {
+    height: 42px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 15.5px;
+  }
+
+  .info {
+    padding: 18px;
+    font-size: 15px;
+  }
+
+  .info-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .notes {
+    padding: 18px;
+    font-size: 14.5px;
+  }
+
+  .footer {
+    font-size: 13px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- CARD -->
+  <div class="card">
+
+    <!-- LOGO INSIDE CARD -->
+    <div class="card-logo">
+      <img src="karpi-logo.png" alt="Karpi Logo">
+    </div>
+
+    <div class="title">🎉 Registration Completed!</div>
+    <div class="subtitle">
+      Welcome to Karpi, {{NAME}} 👋<br />
+      Your enrollment and payment have been successfully completed.
+    </div>
+
+    <!-- INFO -->
+    <div class="info">
+      <div class="info-row"><span>Invoice ID : </span><span>{{INVOICE_ID}}</span></div>
+      <div class="info-row"><span>Client ID : </span><span>{{CLIENT_ID}}</span></div>
+      <div class="info-row"><span>Academy : </span><span>{{ACADEMY}}</span></div>
+      <div class="info-row"><span>Plan : </span><span>{{PLAN}}</span></div>
+      <div class="info-row"><span>Amount Paid : </span><span>₹{{AMOUNT}}</span></div>
+      <div class="info-row"><span>Date : </span><span>{{DATE}}</span></div>
+    </div>
+
+    <!-- CTA -->
+    <a class="cta-btn" href="https://{{SUBDOMAIN}}.karpiapp.com" target="_blank">
+      🚀 Access Your Academy App
+    </a>
+
+    <!-- NOTES -->
+    <div class="notes">
+      <b>What happens next?</b><br><br>
+
+      📧 You will receive the following emails shortly:
+      <ul>
+        <li>Payment Invoice</li>
+        <li>Registration Confirmation</li>
+        <li>Welcome Email</li>
+        <li>Login Credentials</li>
+      </ul>
+
+      🔐 Use the <b>Academy App link above</b> and log in using the
+      <b>credentials shared via email</b>.
+
+      <br><br>
+
+      If you don’t see the emails, check your <b>Spam / Junk</b> folder and mark them as
+      <b>“Not Spam”</b>.
+
+      <br><br>
+
+      📱 You will receive a <b>WhatsApp confirmation message</b>.
+      Please click <b>OK / YES</b> to continue receiving important updates.
+
+      <br><br>
+
+      ⏳ Your account is being finalized and may take a few minutes to complete.
+    </div>
+
+    <!-- SETUP LINK -->
+    <div class="setup-link">
+      👉 <a href="#" onclick="alert('Setup video will open here')">
+        How to set up your academy (Watch Video)
+      </a>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    © {{YEAR}} Karpi LMS · Powered by Karpi
+  </div>
+
+</div>
+
+<!-- CONFETTI SCRIPT -->
+<script>
+  window.onload = function () {
+    for (let i = 0; i < 80; i++) {
+      const confetti = document.createElement("div");
+      confetti.className = "confetti";
+      confetti.style.left = Math.random() * 100 + "vw";
+      confetti.style.background =
+        ["#2563EB", "#1E40AF", "#60A5FA", "#BFDBFE"][
+          Math.floor(Math.random() * 4)
+        ];
+      confetti.style.animationDuration = 2 + Math.random() * 2 + "s";
+      document.body.appendChild(confetti);
+
+      setTimeout(() => confetti.remove(), 4000);
+    }
+  };
+</script>
+
+</body>
+</html>
