@@ -21,6 +21,11 @@ import { ClientSettingsService } from '../../client/client-settings/client-setti
 import { ClientBrandingService } from '../../client/client-branding/client-branding.service';
 import { ClientLandingPageService } from '../../client/client_landing_page/client-landing-page.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import {
+  ENROLLMENT_FORM_URL,
+  INTERNAL_AUTH_BASE_URL,
+  INVOICES_BASE_URL,
+} from '../../shared/config/app-urls';
 
 
 @Injectable()
@@ -83,7 +88,7 @@ export class EnrollmentInvitesService {
     const invite = this.inviteRepo.create(inviteData);
     await this.inviteRepo.save(invite);
     
-    const link = `${process.env.ENROLLMENT_FORM_URL}?token=${token}`;
+    const link = `${ENROLLMENT_FORM_URL}?token=${token}`;
 
     await this.sendEmail(email, clientName, link);
 
@@ -152,8 +157,7 @@ export class EnrollmentInvitesService {
       );
     }
 
-    const GATEWAY = process.env.API_GATEWAY_INTERNAL_URL ?? 'http://localhost:4100';
-    const AUTH_API = `${GATEWAY}/auth`;
+    const AUTH_API = INTERNAL_AUTH_BASE_URL;
 
     // -----------------------------------------------------
     // 2️⃣ Fetch Plan Details
@@ -469,7 +473,7 @@ export class EnrollmentInvitesService {
       });
 
       const invoiceFilename = pdfPath.split("/").pop();
-      invoiceUrl = `${process.env.SUPERADMIN_PUBLIC_URL ?? 'http://localhost:4100'}/invoices/${invoiceFilename}`;
+      invoiceUrl = `${INVOICES_BASE_URL}/${invoiceFilename}`;
 
       await this.dataSource.query(
         `

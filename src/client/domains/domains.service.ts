@@ -16,6 +16,7 @@ import { randomBytes } from 'crypto';
 import * as dns from 'dns/promises';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { INFRA_WEBHOOK_URL } from '../../shared/config/app-urls';
 
 @Injectable()
 export class DomainsService {
@@ -214,7 +215,7 @@ export class DomainsService {
         // 🔔 Notify infra service to provision Nginx + SSL for custom domain (fire and forget)
         // INFRA_WEBHOOK_URL points to a separate infra server (NOT this backend).
         // Leave unset until you build the infra provisioning service.
-        if (process.env.INFRA_WEBHOOK_URL) {
+        if (INFRA_WEBHOOK_URL) {
           const payload = {
             domain: domain.domain,
             client_id: domain.client_id,
@@ -222,7 +223,7 @@ export class DomainsService {
           };
           try {
             await firstValueFrom(
-              this.http.post(process.env.INFRA_WEBHOOK_URL, payload),
+              this.http.post(INFRA_WEBHOOK_URL, payload),
             );
           } catch (err) {
             console.error('Infra webhook failed:', err?.message);

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Invite } from '../shared/entities/invite.entity';
 import { randomBytes } from 'crypto';
 import * as nodemailer from 'nodemailer';
+import { FRONTEND_BASE_URL } from '../shared/config/app-urls';
 
 @Injectable()
 export class InviteService {
@@ -48,7 +49,7 @@ export class InviteService {
       expires_at: expiresAt,
     });
 
-    const enrollUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3002'}/enroll?token=${token}`;
+    const enrollUrl = `${FRONTEND_BASE_URL}/enroll?token=${token}`;
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

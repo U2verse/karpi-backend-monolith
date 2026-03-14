@@ -17,6 +17,7 @@ import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getEmailTransporter } from '../../superadmin/enrollments/email';
+import { STUDENT_APP_BASE_URL } from '../../shared/config/app-urls';
 
 @Injectable()
 export class AdmissionsService {
@@ -93,7 +94,7 @@ export class AdmissionsService {
     const savedLink = await this.linkRepo.save(link);
 
     // 🔗 Build admission URL
-    const admissionUrl = `${process.env.STUDENT_APP_URL}/admission/${token}`;
+    const admissionUrl = `${STUDENT_APP_BASE_URL}/admission/${token}`;
 
     // 📧 Send admission email (non-blocking & safe)
     try {
