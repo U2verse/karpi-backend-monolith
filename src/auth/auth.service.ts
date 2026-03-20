@@ -204,8 +204,8 @@ export class AuthService {
       // 🔑 fast lookup fingerprint (SHA-256)
       const fp = createHash("sha256").update(raw).digest("hex");
 
-      // 🔐 secure stored hash (bcrypt)
-      const hash = await bcrypt.hash(raw, 12);
+      // 🔐 secure stored hash (10 rounds — sufficient for 48-byte random token)
+      const hash = await bcrypt.hash(raw, 10);
 
       const expiresAt = new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000,
@@ -252,129 +252,98 @@ export class AuthService {
 
 
   // ------------------------------------------------------
-  // 🔥 REFRESH WITH RLS (transaction + SET LOCAL)
+  // 🔥 REFRESH WITH RLS — fingerprint fast-path O(1)
   // ------------------------------------------------------
   async refresh(raw: string, ip?: string, ua?: string) {
+    const fp = createHash('sha256').update(raw).digest('hex');
+
     return this.dataSource.transaction(async (manager) => {
       await manager.query(`SELECT set_config('my.role', 'SUPERADMIN', true)`);
       await manager.query(`SELECT set_config('my.tenant_id', '', true)`);
 
-      // 1️⃣ Find all non-revoked refresh tokens
-      const tokens = await manager.find(RefreshToken, {
-        where: { revoked: false },
-        relations: ['user'],
-      });
+      // 1️⃣ Single-row lookup by fingerprint index — O(1)
+      const [t] = await manager.query(
+        `SELECT id, user_id, student_id, token_hash, expires_at, tenant_id, revoked
+           FROM refresh_tokens
+          WHERE token_fingerprint = $1 AND revoked = false
+          LIMIT 1`,
+        [fp],
+      );
 
-      for (const t of tokens) {
-        const match = await bcrypt.compare(raw, t.token_hash);
-        if (!match) continue;
-
-        // ── Student token branch ───────────────────────────────────
-        // Check t.student_id (column) instead of t.student (relation) to
-        // avoid RLS JOIN issues with empty tenant context during bulk load.
-        if (!t.user && t.student_id) {
-          const [student] = await manager.query(
-            `SELECT student_id, email, tenant_id FROM students WHERE student_id = $1 LIMIT 1`,
-            [t.student_id],
-          );
-          if (!student) continue;
-
-          if (t.expires_at < new Date()) {
-            t.revoked = true;
-            await manager.save(t);
-            throw new UnauthorizedException('Refresh token expired');
-          }
-
-          // Rotate: revoke old, issue new
-          t.revoked = true;
-          await manager.save(t);
-
-          const newRaw = randomBytes(48).toString('hex');
-          const newFp = createHash('sha256').update(newRaw).digest('hex');
-          const newHash = await bcrypt.hash(newRaw, 12);
-          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-          await manager.query(
-            `INSERT INTO refresh_tokens (student_id, tenant_id, token_hash, token_fingerprint, expires_at, revoked)
-             VALUES ($1::uuid, $2, $3, $4, $5, false)`,
-            [student.student_id, student.tenant_id, newHash, newFp, expiresAt],
-          );
-
-          const access_token = this.jwt.sign(
-            { sub: student.student_id, email: student.email, role: 'student', tenant_id: student.tenant_id },
-            { expiresIn: '15m' },
-          );
-
-          return { access_token, refresh_token: newRaw };
-        }
-
-        // ── User (admin / superadmin) token branch ─────────────────
-        const user = t.user;
-        if (!user) continue;
-        const userId = user.user_id;
-        const tenantId = user.tenant_id ?? null;
-        const role = user.role;
-
-        // 2️⃣ Check expiry
-        if (t.expires_at < new Date()) {
-          t.revoked = true;
-          await manager.save(t);
-
-          await this.audit(userId, 'refresh_expired', { ip, ua });
-          throw new UnauthorizedException('Refresh token expired');
-        }
-
-        // 3️⃣ Revoke old token (rotation)
-        t.revoked = true;
-        await manager.save(t);
-
-        // 4️⃣ Update RLS context to the actual user's tenant
-        await manager.query(`SELECT set_config('my.tenant_id', $1, true)`, [tenantId ?? '']);
-        await manager.query(`SELECT set_config('my.role', $1, true)`, [role.toUpperCase()]);
-
-        // 5️⃣ Create new refresh token
-        const newRaw = randomBytes(48).toString('hex');
-        const newHash = await bcrypt.hash(newRaw, 12);
-
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7);
-
-        const newToken = manager.create(RefreshToken, {
-          user,
-          user_id: userId,
-          tenant_id: tenantId,
-          token_hash: newHash,
-          expires_at: expiresAt,
-          revoked: false,
-          ip_address: ip ?? null,
-          user_agent: ua ?? null,
-        });
-
-        await manager.save(newToken);
-
-        // 6️⃣ Issue new access token
-        const payload = {
-          sub: userId,
-          email: user.email,
-          role,
-          tenant_id: tenantId,
-        };
-
-        const access_token = this.jwt.sign(payload, {
-          expiresIn: '15m',
-        });
-
-        await this.audit(userId, 'refresh_success', { ip, ua });
-
-        return {
-          access_token,
-          refresh_token: newRaw,
-        };
+      if (!t) {
+        await this.audit(null, 'refresh_invalid', { ip, ua });
+        throw new UnauthorizedException('Invalid refresh token');
       }
 
-      // ❌ No matching refresh token
-      await this.audit(null, 'refresh_invalid', { ip, ua });
-      throw new UnauthorizedException('Invalid refresh token');
+      // 2️⃣ Verify hash (one bcrypt.compare, not N)
+      const match = await bcrypt.compare(raw, t.token_hash);
+      if (!match) {
+        await this.audit(t.user_id ?? null, 'refresh_invalid', { ip, ua });
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // 3️⃣ Check expiry
+      if (new Date(t.expires_at) < new Date()) {
+        await manager.query(`UPDATE refresh_tokens SET revoked = true WHERE id = $1`, [t.id]);
+        await this.audit(t.user_id ?? null, 'refresh_expired', { ip, ua });
+        throw new UnauthorizedException('Refresh token expired');
+      }
+
+      // 4️⃣ Rotate: revoke old token
+      await manager.query(`UPDATE refresh_tokens SET revoked = true WHERE id = $1`, [t.id]);
+
+      // 5️⃣ Issue new refresh token (10 rounds — sufficient for 48-byte random token)
+      const newRaw = randomBytes(48).toString('hex');
+      const newFp  = createHash('sha256').update(newRaw).digest('hex');
+      const newHash = await bcrypt.hash(newRaw, 10);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      // ── Student branch ────────────────────────────────────────────
+      if (t.student_id) {
+        const [student] = await manager.query(
+          `SELECT student_id, email, tenant_id FROM students WHERE student_id = $1 LIMIT 1`,
+          [t.student_id],
+        );
+        if (!student) throw new UnauthorizedException('Invalid refresh token');
+
+        await manager.query(
+          `INSERT INTO refresh_tokens (student_id, tenant_id, token_hash, token_fingerprint, expires_at, revoked)
+           VALUES ($1::uuid, $2, $3, $4, $5, false)`,
+          [student.student_id, student.tenant_id, newHash, newFp, expiresAt],
+        );
+
+        const access_token = this.jwt.sign(
+          { sub: student.student_id, email: student.email, role: 'student', tenant_id: student.tenant_id },
+          { expiresIn: '15m' },
+        );
+
+        return { access_token, refresh_token: newRaw };
+      }
+
+      // ── User (clientadmin / superadmin) branch ────────────────────
+      const [user] = await manager.query(
+        `SELECT user_id, email, role, tenant_id FROM users WHERE user_id = $1 LIMIT 1`,
+        [t.user_id],
+      );
+      if (!user) throw new UnauthorizedException('Invalid refresh token');
+
+      const tenantId = user.tenant_id ?? null;
+
+      await manager.query(
+        `INSERT INTO refresh_tokens
+           (user_id, tenant_id, token_hash, token_fingerprint, expires_at, revoked, ip_address, user_agent)
+         VALUES ($1, $2, $3, $4, $5, false, $6, $7)`,
+        [user.user_id, tenantId, newHash, newFp, expiresAt, ip ?? null, ua ?? null],
+      );
+
+      const access_token = this.jwt.sign(
+        { sub: user.user_id, email: user.email, role: user.role, tenant_id: tenantId },
+        { expiresIn: '15m' },
+      );
+
+      await this.audit(user.user_id, 'refresh_success', { ip, ua });
+
+      return { access_token, refresh_token: newRaw };
     });
   }
 

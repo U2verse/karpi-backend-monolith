@@ -1,26 +1,35 @@
 import * as nodemailer from "nodemailer";
-import * as fs from "fs";
 
 // -----------------------------------------------------
 // 1️⃣ Your ORIGINAL EMAIL TRANSPORTER (unchanged)
 // -----------------------------------------------------
 let transporter: nodemailer.Transporter | null = null;
 
+function isFalseLike(value: string | undefined): boolean {
+  if (!value) return false;
+  return ["0", "false", "no", "off"].includes(value.trim().toLowerCase());
+}
+
 export function getEmailTransporter() {
   if (!transporter) {
+    const port = Number(process.env.SMTP_PORT || 587);
+    const secure = port === 465;
+    const rejectUnauthorized = !isFalseLike(
+      process.env.SMTP_TLS_REJECT_UNAUTHORIZED,
+    );
+
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: false,
-      requireTLS: true,
+      port,
+      secure,
+      requireTLS: !secure,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
       tls: {
-        rejectUnauthorized: false,
-        ciphers: "SSLv3",
-        minVersion: "TLSv1",
+        minVersion: "TLSv1.2",
+        rejectUnauthorized,
       },
     });
 
@@ -36,7 +45,6 @@ export function getEmailTransporter() {
 // -----------------------------------------------------
 export async function sendInvoiceEmail({
   to,
-  name,
   html,
   pdfPath,
 }: {
@@ -45,7 +53,7 @@ export async function sendInvoiceEmail({
   html: string;
   pdfPath: string;
 }) {
-  return transporter!.sendMail({
+  return getEmailTransporter().sendMail({
     from: process.env.FROM_EMAIL,
     to,
     subject: "Your Karpi LMS Invoice",

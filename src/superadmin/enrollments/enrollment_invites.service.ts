@@ -3,14 +3,16 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EnrollmentInvite } from "./enrollment_invite.entity";
 import { CreateEnrollmentInviteDto } from "./dto/create-enrollment-invite.dto";
-import { randomBytes } from "crypto";
+import { randomBytes, createHmac } from "crypto";
 import { SubmitEnrollmentDto } from "./dto/submit-enrollment.dto";
 import { DataSource } from "typeorm";
 import axios from "axios";
 import * as bcrypt from 'bcrypt';
+import Razorpay from 'razorpay';
 import { getEmailTransporter } from "./email";
 import * as fs from "fs";
 import * as path from "path";
+import { SentMessageInfo } from "nodemailer";
 import { generateInvoicePDF } from "../utils/generate-invoice";
 import { sendInvoiceEmail } from "../utils/send-invoice-email";
 import { WhatsappService } from '../whatsapp/whatsapp.service';
@@ -89,8 +91,14 @@ export class EnrollmentInvitesService {
     await this.inviteRepo.save(invite);
     
     const link = `${ENROLLMENT_FORM_URL}?token=${token}`;
-
-    await this.sendEmail(email, clientName, link);
+    try {
+      await this.sendEmail(email, clientName, link);
+    } catch (error: any) {
+      await this.inviteRepo.delete({ id: invite.id });
+      throw new BadRequestException(
+        error?.message || "Failed to send enrollment email. Please check SMTP settings.",
+      );
+    }
 
     if (whatsapp) {
       try {
@@ -108,6 +116,49 @@ export class EnrollmentInvitesService {
       success: true,
       message: "Enrollment form sent successfully",
       link,
+      /* email: {
+        message_id: emailResult.messageId,
+        delivery_confirmed: emailResult.deliveryConfirmed,
+        accepted: emailResult.accepted,
+        rejected: emailResult.rejected,
+        provider_response: emailResult.response,
+      }, */
+    };
+  }
+
+  // -----------------------------------------------------
+  // CREATE RAZORPAY ORDER
+  // -----------------------------------------------------
+  async createRazorpayOrder(token: string, plan_id: number, billing_type: 'monthly' | 'yearly') {
+    const invite = await this.inviteRepo.findOne({ where: { token } });
+    if (!invite) throw new BadRequestException('Invalid or expired token');
+    if (invite.completed) throw new BadRequestException('This enrollment is already completed');
+
+    const plan = await this.dataSource.query(
+      `SELECT price_monthly, price_yearly FROM plans WHERE id = $1`,
+      [plan_id],
+    );
+    if (!plan?.length) throw new BadRequestException('Invalid plan');
+
+    const rawPrice = billing_type === 'yearly' ? plan[0].price_yearly : plan[0].price_monthly;
+    const amountPaise = Math.round(parseFloat(rawPrice) * 100); // Razorpay expects paise
+
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID!,
+      key_secret: process.env.RAZORPAY_KEY_SECRET!,
+    });
+
+    const order = await razorpay.orders.create({
+      amount: amountPaise,
+      currency: 'INR',
+      receipt: `enroll_${token.slice(0, 16)}`,
+    });
+
+    return {
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key_id: process.env.RAZORPAY_KEY_ID,
     };
   }
 
@@ -132,7 +183,21 @@ export class EnrollmentInvitesService {
       pincode,
       gst_number,
       pan_number,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
     } = dto;
+
+    // -----------------------------------------------------
+    // 0️⃣ Verify Razorpay signature
+    // -----------------------------------------------------
+    const expectedSignature = createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      throw new BadRequestException('Payment verification failed: invalid signature');
+    }
 
     // -----------------------------------------------------
     // 1️⃣ Validate invite token
@@ -427,7 +492,7 @@ export class EnrollmentInvitesService {
           gst_number,
           pan_number,
           amount,
-          "mock",
+          "razorpay",
           "success",
         ]
       );
@@ -488,7 +553,7 @@ export class EnrollmentInvitesService {
       );
       console.log("✅ Invoice record created");
 
-      const templatePath = path.resolve(process.cwd(), "src", "superadmin", "email-templates", "invoice-email.html");
+      const templatePath = path.resolve(__dirname, "..", "email-templates", "invoice-email.html");
       const template = fs.readFileSync(templatePath, "utf8");
       const emailHtml = template
         .replace(/{{NAME}}/g, owner_name)
@@ -511,7 +576,7 @@ export class EnrollmentInvitesService {
     // Welcome Email with Login Credentials (non-critical)
     // -----------------------------------------------------
     try {
-      const welcomeTemplatePath = path.resolve(process.cwd(), "src", "superadmin", "email-templates", "welcome-email.html");
+      const welcomeTemplatePath = path.resolve(__dirname, "..", "email-templates", "welcome-email.html");
       const welcomeTemplate = fs.readFileSync(welcomeTemplatePath, "utf8");
       const academyUrl = `https://${subdomain}.karpiapp.com`;
       const welcomeHtml = welcomeTemplate
@@ -552,38 +617,45 @@ export class EnrollmentInvitesService {
   // EMAIL SENDER (Stub – Ready for Resend/Nodemailer)
   // -------------------------------------------------
   async sendEmail(email: string, name: string, link: string) {
-    try {
-      // 1️⃣ Load Template
-      const templatePath = path.resolve(
-        process.cwd(),
-        "src",
-        "superadmin",
-        "email-templates",
-        "enrollment-invite.html"
-      );
-      const template = fs.readFileSync(templatePath, "utf8");
+    // 1️⃣ Load Template
+    const templatePath = path.resolve(
+      __dirname,
+      "..",
+      "email-templates",
+      "enrollment-invite.html"
+    );
+    const template = fs.readFileSync(templatePath, "utf8");
 
-      const html = template
+    const html = template
       .replace(/{{name}}/g, name)
       .replace(/{{link}}/g, link)
       .replace(/{{year}}/g, new Date().getFullYear().toString());
-      
-      // 2️⃣ Send email using shared transporter
-      const transporter = getEmailTransporter();
 
-      const info = await transporter.sendMail({
-        from: process.env.FROM_EMAIL,
-        to: email,
-        subject: "Your Karpi Enrollment Form",
-        html,
-      });
-      console.log("📧 Email Sent:", info.messageId);
-      console.log("Using Transporter:", transporter.options);
+    // 2️⃣ Send email using shared transporter
+    const transporter = getEmailTransporter();
+    const info = (await transporter.sendMail({
+      from: process.env.FROM_EMAIL,
+      to: email,
+      subject: "Your Karpi Enrollment Form",
+      html,
+    })) as SentMessageInfo;
 
-    } catch (error) {
-      console.error("❌ Email Send Error:", error);
-     // console.log("Using Transporter:", transporter.options);
-    }
+    const accepted = (info.accepted ?? []).map((entry) => String(entry).toLowerCase());
+    const rejected = (info.rejected ?? []).map((entry) => String(entry).toLowerCase());
+    const normalizedEmail = email.toLowerCase();
+    const deliveryConfirmed = accepted.length > 0
+      ? accepted.includes(normalizedEmail) && !rejected.includes(normalizedEmail)
+      : rejected.length === 0; // if SES doesn't populate accepted[], treat as confirmed if no rejects
+
+    console.log("📧 Enrollment invite email accepted:", info.messageId);
+
+    return {
+      messageId: info.messageId,
+      deliveryConfirmed,
+      accepted,
+      rejected,
+      response: info.response ?? "",
+    };
   }
 
   async sendInvoiceEmail(options: {
@@ -611,13 +683,7 @@ export class EnrollmentInvitesService {
 
       try {
         // 1️⃣ Load invoice template
-        const templatePath = path.resolve(
-          process.cwd(),
-          "src",
-          "superadmin",
-          "email-templates",
-          "invoice-email.html"
-        );
+        const templatePath = path.resolve(__dirname, "..", "email-templates", "invoice-email.html");
 
         const template = fs.readFileSync(templatePath, "utf8");
 

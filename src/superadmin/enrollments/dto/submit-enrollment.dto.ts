@@ -53,4 +53,17 @@ export class SubmitEnrollmentDto {
   @IsString()
   @IsOptional()
   pan_number?: string;
+
+  // Razorpay payment fields
+  @IsString()
+  @IsNotEmpty()
+  razorpay_order_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  razorpay_payment_id: string;
+
+  @IsString()
+  @IsNotEmpty()
+  razorpay_signature: string;
 }
