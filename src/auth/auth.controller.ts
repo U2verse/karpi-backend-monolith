@@ -8,7 +8,6 @@ import {
   Res,
   Param,
 } from '@nestjs/common';
-import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { DataSource } from 'typeorm';
@@ -101,7 +100,7 @@ export class AuthController {
     // 🔐 Refresh token (httpOnly, automatic)
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -109,8 +108,8 @@ export class AuthController {
 
     // 🛡 CSRF token (readable by JS)
     res.cookie('csrf_token', randomBytes(32).toString('hex'), {
-      httpOnly: false, // 👈 must be readable by frontend
-      sameSite: 'lax',
+      httpOnly: false,
+      sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -122,31 +121,6 @@ export class AuthController {
     };
   }
 
-
-  /**
-   * SAVE REFRESH TOKEN IN HTTP-ONLY COOKIE
-   * Body: { refresh_token }
-   */
-  @Post('save-refresh')
-  saveRefresh(
-    @Body('refresh_token') token: string,
-    @Res() res: Response,
-  ) {
-    if (!token) {
-      return res.status(400).json({ error: 'No refresh token provided' });
-    }
-
-    res.cookie('refresh_token', token, {
-      httpOnly: true,
-      secure: false,   // ⚠ MUST be false for localhost
-      sameSite: 'lax', // safer for localhost + redirects
-      path: '/',       // 🔥 CRITICAL FIX
-       domain: "localhost",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    return res.json({ ok: true });
-  }
 
   /**
    * REFRESH TOKEN
@@ -195,11 +169,8 @@ export class AuthController {
   async refresh(
     @Req() req: any,
     @Res({ passthrough: true }) res: any,
-    @Body() body?: { refresh_token?: string },
   ) {
-    // Accept token from httpOnly cookie (preferred) or request body (fallback
-    // for clients that can't send credentials with cross-origin requests).
-    const refreshToken = req.cookies?.refresh_token ?? body?.refresh_token;
+    const refreshToken = req.cookies?.refresh_token;
     if (!refreshToken) {
       throw new UnauthorizedException();
     }
@@ -209,7 +180,7 @@ export class AuthController {
 
     res.cookie('refresh_token', newRefresh, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -315,7 +286,7 @@ export class AuthController {
 
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -323,7 +294,7 @@ export class AuthController {
 
     res.cookie('csrf_token', randomBytes(32).toString('hex'), {
       httpOnly: false,
-      sameSite: 'lax',
+      sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,

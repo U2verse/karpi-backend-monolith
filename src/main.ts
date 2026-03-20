@@ -25,9 +25,12 @@ async function bootstrap() {
         // Production root domains
         /^https:\/\/(karpiapp\.com|superadmin\.karpiapp\.com|clientportal\.karpiapp\.com)$/.test(origin);
 
-      callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
+      callback(null, allowed ? origin : false);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
+    maxAge: 86400, // cache preflight for 24 h — eliminates OPTIONS round-trip on repeat requests
   });
 
   await app.listen(process.env.PORT ?? 4100);
